@@ -1,0 +1,251 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game:GetService("CoreGui")
+screenGui.Name = "AimbotGui"
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = true
+fovCircle.Radius = 150
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Thickness = 3
+fovCircle.Filled = false
+fovCircle.Transparency = 1
+fovCircle.NumSides = 64
+
+local settingsFrame = Instance.new("Frame")
+settingsFrame.Size = UDim2.new(0, 250, 0, 220)
+settingsFrame.Position = UDim2.new(0.5, -125, 0.5, -110)
+settingsFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+settingsFrame.BorderSizePixel = 1
+settingsFrame.Parent = screenGui
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Text = "Aimbot Settings"
+titleLabel.TextSize = 20
+titleLabel.Parent = settingsFrame
+
+local targetDropdown = Instance.new("TextButton")
+targetDropdown.Size = UDim2.new(1, 0, 0, 30)
+targetDropdown.Position = UDim2.new(0, 0, 0, 40)
+targetDropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+targetDropdown.Text = "Target: Head"
+targetDropdown.Parent = settingsFrame
+
+local accuracySlider = Instance.new("Frame")
+accuracySlider.Size = UDim2.new(1, 0, 0, 30)
+accuracySlider.Position = UDim2.new(0, 0, 0, 80)
+accuracySlider.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+accuracySlider.Parent = settingsFrame
+
+local accuracyValue = Instance.new("TextLabel")
+accuracyValue.Size = UDim2.new(1, 0, 1, 0)
+accuracyValue.Position = UDim2.new(0, 0, 0, 0)
+accuracyValue.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+accuracyValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+accuracyValue.Text = "Accuracy: 50"
+accuracyValue.TextSize = 14
+accuracyValue.Parent = accuracySlider
+
+local fovSlider = Instance.new("Frame")
+fovSlider.Size = UDim2.new(1, 0, 0, 30)
+fovSlider.Position = UDim2.new(0, 0, 0, 120)
+fovSlider.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+fovSlider.Parent = settingsFrame
+
+local fovValue = Instance.new("TextLabel")
+fovValue.Size = UDim2.new(1, 0, 1, 0)
+fovValue.Position = UDim2.new(0, 0, 0, 0)
+fovValue.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+fovValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovValue.Text = "FOV: 150"
+fovValue.TextSize = 14
+fovValue.Parent = fovSlider
+
+local wallCheckToggle = Instance.new("TextButton")
+wallCheckToggle.Size = UDim2.new(1, 0, 0, 30)
+wallCheckToggle.Position = UDim2.new(0, 0, 0, 160)
+wallCheckToggle.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+wallCheckToggle.Text = "Wall Check: ON"
+wallCheckToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+wallCheckToggle.Parent = settingsFrame
+
+local currentAccuracy = 50
+local currentFOV = 150
+local wallCheckEnabled = true
+local dragInput, mousePos, sliderPos
+local dragging, dragInput2, startPos
+
+local function updateAccuracy(value)
+    currentAccuracy = value
+    accuracyValue.Text = "Accuracy: " .. math.floor(value / 25) * 25
+end
+
+accuracySlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragInput = input
+        mousePos = input.Position
+        sliderPos = accuracySlider.AbsolutePosition
+    end
+end)
+
+accuracySlider.InputChanged:Connect(function(input)
+    if input == dragInput then
+        local delta = (input.Position - mousePos).X
+        local newValue = math.clamp(currentAccuracy + delta / 2, 0, 100)
+        updateAccuracy(newValue)
+    end
+end)
+
+accuracySlider.InputEnded:Connect(function(input)
+    if input == dragInput then
+        dragInput = nil
+    end
+end)
+
+local function updateFOV(value)
+    currentFOV = math.floor(value / 25) * 25
+    if currentFOV < 75 then currentFOV = 75 end
+    if currentFOV > 300 then currentFOV = 300 end
+    fovValue.Text = "FOV: " .. currentFOV
+    fovCircle.Radius = currentFOV
+end
+
+fovSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragInput = input
+        mousePos = input.Position
+        sliderPos = fovSlider.AbsolutePosition
+    end
+end)
+
+fovSlider.InputChanged:Connect(function(input)
+    if input == dragInput then
+        local delta = (input.Position - mousePos).X
+        local newValue = math.clamp(currentFOV + delta / 2, 75, 300)
+        updateFOV(newValue)
+    end
+end)
+
+fovSlider.InputEnded:Connect(function(input)
+    if input == dragInput then
+        dragInput = nil
+    end
+end)
+
+targetDropdown.MouseButton1Click:Connect(function()
+    if targetDropdown.Text == "Target: Head" then
+        targetDropdown.Text = "Target: Body"
+    else
+        targetDropdown.Text = "Target: Head"
+    end
+end)
+
+wallCheckToggle.MouseButton1Click:Connect(function()
+    wallCheckEnabled = not wallCheckEnabled
+    wallCheckToggle.Text = "Wall Check: " .. (wallCheckEnabled and "ON" or "OFF")
+    wallCheckToggle.BackgroundColor3 = wallCheckEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
+end)
+
+local function update(input)
+    local delta = input.Position - mousePos
+    settingsFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+settingsFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragInput2 = input
+        mousePos = input.Position
+        startPos = settingsFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput2 and dragging then
+        update(input)
+    end
+end)
+
+settingsFrame.Visible = false
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.V then
+        settingsFrame.Visible = not settingsFrame.Visible
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    local mousePos = UserInputService:GetMouseLocation()
+    fovCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+end)
+
+local function canSeeTarget(player)
+    if not wallCheckEnabled then return true end
+    local targetPart = targetDropdown.Text == "Target: Head" and player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+    if not targetPart then return false end
+    local rayOrigin = Camera.CFrame.Position
+    local rayDirection = (targetPart.Position - rayOrigin)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+    if raycastResult then
+        return raycastResult.Instance:IsDescendantOf(player.Character)
+    end
+    return true
+end
+
+local function findBestTarget()
+    local bestPlayer = nil
+    local shortestDistance = math.huge
+    local mousePos = UserInputService:GetMouseLocation()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPos = player.Character.HumanoidRootPart.Position
+            local screenPos, onScreen = Camera:WorldToViewportPoint(rootPos)
+            if onScreen then
+                local distance2D = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                if distance2D <= currentFOV and canSeeTarget(player) then
+                    if distance2D < shortestDistance then
+                        shortestDistance = distance2D
+                        bestPlayer = player
+                    end
+                end
+            end
+        end
+    end
+    return bestPlayer
+end
+
+local function aimAtPlayer(player)
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPart = targetDropdown.Text == "Target: Head" and player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("HumanoidRootPart")
+        if targetPart then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    local bestTarget = findBestTarget()
+    if bestTarget then
+        aimAtPlayer(bestTarget)
+    end
+end)
+
+print("PERFECT SMOOTH AIMBOT BY SAVITAR Press V to toggle UI (FOV stays ON)")
